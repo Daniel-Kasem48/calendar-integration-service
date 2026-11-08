@@ -1,0 +1,24 @@
+[
+  {
+    "id": "acme",
+    "apiKey": "REPLACE_WITH_A_RANDOM_64_CHARACTER_HEX_API_KEY",
+    "webhookSecret": "REPLACE_WITH_A_DIFFERENT_RANDOM_64_CHARACTER_HEX_SECRET",
+    "notificationUrl": "https://your-app.example/calendar/changes",
+    "google": {
+      "clientId": "YOUR_GOOGLE_CLIENT_ID",
+      "clientSecret": "YOUR_GOOGLE_CLIENT_SECRET",
+      "refreshToken": "YOUR_GOOGLE_REFRESH_TOKEN",
+      "calendars": [
+        "room@example.com"
+      ]
+    },
+    "microsoft": {
+      "tenantId": "YOUR_MICROSOFT_DIRECTORY_TENANT_ID",
+      "clientId": "YOUR_MICROSOFT_CLIENT_ID",
+      "clientSecret": "YOUR_MICROSOFT_CLIENT_SECRET",
+      "calendars": [
+        "room@example.com"
+      ]
+    }
+  }
+]
