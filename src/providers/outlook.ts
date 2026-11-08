@@ -1,8 +1,8 @@
-// Provider payloads extracted from Spantrek's Office365CalendarClient.
+// Provider payloads extracted from the original integration's Office365CalendarClient.
 import { createHmac } from "node:crypto";
 import moment from "moment-timezone";
 import { Tenant, fail, secretEquals } from "../config";
-import { microsoftRecurrence } from "../recurrence";
+import { outlookRecurrence } from "../recurrence";
 import {
   CalendarEvent,
   EventInput,
@@ -13,7 +13,7 @@ import {
 import { webhookToken } from "./google";
 import { ProviderHttp } from "./http";
 
-export class MicrosoftCalendar {
+export class OutlookCalendar {
   constructor(private readonly http: ProviderHttp) {}
   private url(calendar: string): string {
     return `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(calendar)}/calendar/events`;
@@ -28,7 +28,7 @@ export class MicrosoftCalendar {
       url.password ||
       url.hash
     )
-      fail("Unsafe Microsoft continuation URL");
+      fail("Unsafe Outlook continuation URL");
     return url.href;
   }
   private cursor(t: Tenant, calendar: string, url: string): string {
@@ -92,7 +92,7 @@ export class MicrosoftCalendar {
       body.recurrence =
         input.recurrence === null
           ? null
-          : microsoftRecurrence(
+          : outlookRecurrence(
               input.recurrence,
               input.start!,
               input.timeZone!,
@@ -106,12 +106,12 @@ export class MicrosoftCalendar {
   ): Promise<EventPage> {
     if (options.syncToken)
       fail(
-        "Microsoft syncToken is not supported; use pageToken or a full refresh",
+        "Outlook syncToken is not supported; use pageToken or a full refresh",
       );
     const url = options.pageToken
       ? this.decode(t, calendar, options.pageToken)
       : this.url(calendar) + "?$top=250";
-    const data = await this.http.request(t, "MICROSOFT", url);
+    const data = await this.http.request(t, "OUTLOOK", url);
     return {
       items: (data.value || []).map((e: any) => this.event(e)),
       nextPageToken: data["@odata.nextLink"]
@@ -123,7 +123,7 @@ export class MicrosoftCalendar {
     return this.event(
       await this.http.request(
         t,
-        "MICROSOFT",
+        "OUTLOOK",
         this.url(calendar) + "/" + encodeURIComponent(id),
       ),
     );
@@ -136,7 +136,7 @@ export class MicrosoftCalendar {
     return this.event(
       await this.http.request(
         t,
-        "MICROSOFT",
+        "OUTLOOK",
         this.url(calendar),
         "POST",
         this.body(input),
@@ -152,7 +152,7 @@ export class MicrosoftCalendar {
     return this.event(
       await this.http.request(
         t,
-        "MICROSOFT",
+        "OUTLOOK",
         this.url(calendar) + "/" + encodeURIComponent(id),
         "PATCH",
         this.body(input),
@@ -162,7 +162,7 @@ export class MicrosoftCalendar {
   async remove(t: Tenant, calendar: string, id: string): Promise<void> {
     await this.http.request(
       t,
-      "MICROSOFT",
+      "OUTLOOK",
       this.url(calendar) + "/" + encodeURIComponent(id),
       "DELETE",
     );
@@ -175,7 +175,7 @@ export class MicrosoftCalendar {
     const expiresAt = new Date(Date.now() + 3 * 86_400_000).toISOString();
     const data = await this.http.request(
       t,
-      "MICROSOFT",
+      "OUTLOOK",
       "https://graph.microsoft.com/v1.0/subscriptions",
       "POST",
       {
@@ -183,19 +183,19 @@ export class MicrosoftCalendar {
         notificationUrl: callbackUrl,
         resource: `/users/${calendar}/events`,
         expirationDateTime: expiresAt,
-        clientState: webhookToken(t, "MICROSOFT", calendar),
+        clientState: webhookToken(t, "OUTLOOK", calendar),
       },
     );
     return { id: data.id, expiresAt: data.expirationDateTime };
   }
   async renew(t: Tenant, id: string): Promise<Watch> {
-    const data = await this.http.request(t, "MICROSOFT", "https://graph.microsoft.com/v1.0/subscriptions/" + encodeURIComponent(id), "PATCH", { expirationDateTime: new Date(Date.now() + 3 * 86_400_000).toISOString() });
+    const data = await this.http.request(t, "OUTLOOK", "https://graph.microsoft.com/v1.0/subscriptions/" + encodeURIComponent(id), "PATCH", { expirationDateTime: new Date(Date.now() + 3 * 86_400_000).toISOString() });
     return { id: data.id, expiresAt: data.expirationDateTime };
   }
   async unwatch(t: Tenant, id: string): Promise<void> {
     await this.http.request(
       t,
-      "MICROSOFT",
+      "OUTLOOK",
       "https://graph.microsoft.com/v1.0/subscriptions/" +
         encodeURIComponent(id),
       "DELETE",

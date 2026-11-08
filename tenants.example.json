@@ -12,10 +12,10 @@
         "room@example.com"
       ]
     },
-    "microsoft": {
-      "tenantId": "YOUR_MICROSOFT_DIRECTORY_TENANT_ID",
-      "clientId": "YOUR_MICROSOFT_CLIENT_ID",
-      "clientSecret": "YOUR_MICROSOFT_CLIENT_SECRET",
+    "outlook": {
+      "tenantId": "YOUR_OUTLOOK_DIRECTORY_TENANT_ID",
+      "clientId": "YOUR_OUTLOOK_CLIENT_ID",
+      "clientSecret": "YOUR_OUTLOOK_CLIENT_SECRET",
       "calendars": [
         "room@example.com"
       ]

@@ -2,7 +2,7 @@ const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const { CalendarService } = require("../dist/calendar.service");
 const { TenantRegistry } = require("../dist/config");
-const { googleRecurrence, microsoftRecurrence } = require("../dist/recurrence");
+const { googleRecurrence, outlookRecurrence } = require("../dist/recurrence");
 
 const config = () => [
   {
@@ -16,7 +16,7 @@ const config = () => [
       refreshToken: "g-refresh",
       calendars: ["room@example.com"],
     },
-    microsoft: {
+    outlook: {
       tenantId: "directory-id",
       clientId: "m-client",
       clientSecret: "m-secret",
@@ -84,7 +84,7 @@ test("Google event creation maps dates, attendees and private visibility without
   assert.equal(event.title, "Planning");
   assert.match(calls[1].url, /calendars\/room%40example.com\/events/);
 });
-test("Microsoft creation preserves the event timezone and wall clock for recurring meetings", async () => {
+test("Outlook creation preserves the event timezone and wall clock for recurring meetings", async () => {
   const { service } = setup((url, options) => {
     const body = JSON.parse(options.body);
     assert.deepEqual(body.start, {
@@ -98,7 +98,7 @@ test("Microsoft creation preserves the event timezone and wall clock for recurri
   });
   const event = await service.create(
     "acme",
-    "MICROSOFT",
+    "OUTLOOK",
     "room@example.com",
     input,
   );
@@ -196,7 +196,7 @@ test("Google pagination preserves opaque cursors and exposes sync tokens only fr
   assert.equal(page.nextSyncToken, "sync-2");
   assert.equal(page.items[0].status, "cancelled");
 });
-test("Microsoft continuation URLs cannot target another host or mailbox", async () => {
+test("Outlook continuation URLs cannot target another host or mailbox", async () => {
   const { service } = setup(() =>
     Response.json({
       value: [],
@@ -204,11 +204,11 @@ test("Microsoft continuation URLs cannot target another host or mailbox", async 
     }),
   );
   await assert.rejects(
-    service.list("acme", "MICROSOFT", "room@example.com"),
+    service.list("acme", "OUTLOOK", "room@example.com"),
     /continuation/i,
   );
   await assert.rejects(
-    service.list("acme", "MICROSOFT", "room@example.com", {
+    service.list("acme", "OUTLOOK", "room@example.com", {
       pageToken: "https://evil.example",
     }),
     /cursor/i,
@@ -268,13 +268,13 @@ const recurrence = {
   occurrenceCount: 5,
   daysOfWeek: [1, 3],
 };
-test("weekly recurrence is mapped to RRULE and Microsoft pattern/range", () => {
+test("weekly recurrence is mapped to RRULE and Outlook pattern/range", () => {
   assert.equal(
     googleRecurrence(recurrence, input.start, input.timeZone),
     "RRULE:FREQ=WEEKLY;BYDAY=MO,WE;INTERVAL=2;COUNT=5",
   );
   assert.deepEqual(
-    microsoftRecurrence(recurrence, input.start, input.timeZone),
+    outlookRecurrence(recurrence, input.start, input.timeZone),
     {
       pattern: {
         type: "weekly",
@@ -325,7 +325,7 @@ test("all six original recurrence kinds keep their month and weekday conventions
     const r = { ...base, ...fields };
     assert.equal(googleRecurrence(r, input.start, input.timeZone), rule);
     assert.equal(
-      microsoftRecurrence(r, input.start, input.timeZone).pattern.type,
+      outlookRecurrence(r, input.start, input.timeZone).pattern.type,
       kind,
     );
   }
@@ -341,7 +341,7 @@ test("invalid recurrence fields are rejected instead of producing malformed prov
     assert.throws(() => googleRecurrence(r, input.start, input.timeZone));
   }
 });
-test("Google UNTIL uses a UTC datetime and Microsoft uses a local inclusive end date", () => {
+test("Google UNTIL uses a UTC datetime and Outlook uses a local inclusive end date", () => {
   const r = {
     recurrenceType: "DAY",
     interval: 1,
@@ -353,7 +353,7 @@ test("Google UNTIL uses a UTC datetime and Microsoft uses a local inclusive end 
     "RRULE:FREQ=DAILY;UNTIL=20261231T205959Z",
   );
   assert.equal(
-    microsoftRecurrence(r, input.start, input.timeZone).range.endDate,
+    outlookRecurrence(r, input.start, input.timeZone).range.endDate,
     "2026-12-31",
   );
 });
@@ -376,43 +376,43 @@ test('Google watches include a verification token and actual expiration; stoppin
   assert.equal(watch.expiresAt, '2026-12-01T12:00:00.000Z');
   assert.equal(await service.unwatch('acme', 'GOOGLE', 'room@example.com', watch.id, 'resource'), true);
 });
-test('Microsoft watches set clientState and return provider expiration', async () => {
+test('Outlook watches set clientState and return provider expiration', async () => {
   const { service } = setup((url, options) => {
     const body = JSON.parse(options.body);
     assert.equal(body.resource, '/users/room@example.com/events');
     assert.equal(body.changeType, 'created,updated,deleted');
     assert.equal(body.clientState.length, 43);
-    assert.equal(body.notificationUrl, 'https://calendar.example/webhooks/microsoft/acme/room%40example.com');
+    assert.equal(body.notificationUrl, 'https://calendar.example/webhooks/outlook/acme/room%40example.com');
     return Response.json({ id: 'subscription', expirationDateTime: '2026-12-01T12:00:00Z' });
   });
-  const result = await service.watch('acme', 'MICROSOFT', 'room@example.com', 'https://calendar.example');
+  const result = await service.watch('acme', 'OUTLOOK', 'room@example.com', 'https://calendar.example');
   assert.ok(result.id);
   assert.equal(result.expiresAt, '2026-12-01T12:00:00Z');
 });
-test('Microsoft next-page tokens round-trip a legitimate encoded calendar URL', async () => {
+test('Outlook next-page tokens round-trip a legitimate encoded calendar URL', async () => {
   let pages = 0;
   const { service } = setup((url) => {
     if (pages++ === 0) return Response.json({ value: [], '@odata.nextLink': 'https://graph.microsoft.com/v1.0/users/room%40example.com/calendar/events?$skiptoken=next' });
     assert.equal(new URL(url).searchParams.get('$skiptoken'), 'next');
     return Response.json({ value: [] });
   });
-  const first = await service.list('acme', 'MICROSOFT', 'room@example.com');
-  const second = await service.list('acme', 'MICROSOFT', 'room@example.com', { pageToken: first.nextPageToken });
+  const first = await service.list('acme', 'OUTLOOK', 'room@example.com');
+  const second = await service.list('acme', 'OUTLOOK', 'room@example.com', { pageToken: first.nextPageToken });
   assert.deepEqual(second.items, []);
 });
-test('Microsoft continuation accepts equivalent unescaped email addresses', async () => {
+test('Outlook continuation accepts equivalent unescaped email addresses', async () => {
   const { service } = setup(() => Response.json({ value: [], '@odata.nextLink': 'https://graph.microsoft.com/v1.0/users/room@example.com/calendar/events?$skiptoken=next' }));
-  assert.equal(typeof (await service.list('acme', 'MICROSOFT', 'room@example.com')).nextPageToken, 'string');
+  assert.equal(typeof (await service.list('acme', 'OUTLOOK', 'room@example.com')).nextPageToken, 'string');
 });
 
-test('Microsoft recurrence keeps the Berlin wall clock across daylight-saving transitions', async () => {
+test('Outlook recurrence keeps the Berlin wall clock across daylight-saving transitions', async () => {
   const { service } = setup((url, options) => {
     const body = JSON.parse(options.body);
     assert.deepEqual(body.start, { dateTime: '2027-03-22T09:00:00.000', timeZone: 'Europe/Berlin' });
     assert.equal(body.recurrence.pattern.firstDayOfWeek, 'monday');
     return Response.json({ id: 'series', ...body });
   });
-  await service.create('acme', 'MICROSOFT', 'room@example.com', { ...input, start: '2027-03-22T09:00:00+01:00', end: '2027-03-22T10:00:00+01:00', timeZone: 'Europe/Berlin', recurrence });
+  await service.create('acme', 'OUTLOOK', 'room@example.com', { ...input, start: '2027-03-22T09:00:00+01:00', end: '2027-03-22T10:00:00+01:00', timeZone: 'Europe/Berlin', recurrence });
 });
 test('watch cancellation rejects a handle from another tenant or calendar without calling upstream', async () => {
   const c = config();
@@ -431,7 +431,7 @@ test('watch cancellation rejects a handle from another tenant or calendar withou
   await assert.rejects(s.unwatch('acme', 'GOOGLE', 'second@example.com', watch.id, 'resource'), /watch/i);
   assert.equal(calls, before);
 });
-test('Microsoft renewal patches the existing subscription rather than creating a duplicate', async () => {
+test('Outlook renewal patches the existing subscription rather than creating a duplicate', async () => {
   const { service } = setup((url, options) => {
     if (options.method === 'POST') return Response.json({ id: 'subscription', expirationDateTime: '2026-12-01T12:00:00Z' });
     assert.equal(options.method, 'PATCH');
@@ -439,8 +439,8 @@ test('Microsoft renewal patches the existing subscription rather than creating a
     assert.ok(JSON.parse(options.body).expirationDateTime);
     return Response.json({ id: 'subscription', expirationDateTime: '2026-12-03T12:00:00Z' });
   });
-  const watch = await service.watch('acme', 'MICROSOFT', 'room@example.com', 'https://calendar.example');
-  const renewed = await service.renew('acme', 'MICROSOFT', 'room@example.com', watch.id);
+  const watch = await service.watch('acme', 'OUTLOOK', 'room@example.com', 'https://calendar.example');
+  const renewed = await service.renew('acme', 'OUTLOOK', 'room@example.com', watch.id);
   assert.equal(renewed.id, watch.id);
   assert.equal(renewed.expiresAt, '2026-12-03T12:00:00Z');
 });
@@ -452,12 +452,12 @@ test('end-only updates work for untitled provider events', async () => {
   });
   assert.equal((await service.update('acme', 'GOOGLE', 'room@example.com', 'untitled', { end: '2026-12-01T11:00:00+03:00' })).title, '');
 });
-test('Microsoft partial updates preserve a series original IANA timezone', async () => {
+test('Outlook partial updates preserve a series original IANA timezone', async () => {
   const { service } = setup((url, options) => {
     if (!options.method) return Response.json({ id: 'e', subject: 'Series', originalStartTimeZone: 'Europe/Berlin', start: { dateTime: '2027-03-22T08:00:00', timeZone: 'UTC' }, end: { dateTime: '2027-03-22T09:00:00', timeZone: 'UTC' } });
     const body = JSON.parse(options.body);
     assert.deepEqual(body.end, { dateTime: '2027-03-22T10:30:00.000', timeZone: 'Europe/Berlin' });
     return Response.json({ id: 'e', subject: 'Series', start: { dateTime: '2027-03-22T09:00:00', timeZone: 'Europe/Berlin' }, end: body.end });
   });
-  await service.update('acme', 'MICROSOFT', 'room@example.com', 'e', { end: '2027-03-22T10:30:00+01:00' });
+  await service.update('acme', 'OUTLOOK', 'room@example.com', 'e', { end: '2027-03-22T10:30:00+01:00' });
 });

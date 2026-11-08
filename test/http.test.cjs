@@ -15,7 +15,7 @@ const tenant = {
     refreshToken: "refresh",
     calendars: ["room@example.com"],
   },
-  microsoft: {
+  outlook: {
     tenantId: "tenant",
     clientId: "id",
     clientSecret: "secret",
@@ -109,11 +109,11 @@ test("GraphQL null patch fields are rejected before invoking the provider", asyn
   );
   assert.equal(result.body.errors[0].extensions.code, "BAD_USER_INPUT");
 });
-test("Microsoft webhook validation echoes the decoded token as plain text", async (t) => {
+test("Outlook webhook validation echoes the decoded token as plain text", async (t) => {
   const { base } = await fixture(t);
   const response = await fetch(
     base +
-      "/webhooks/microsoft/acme/room%40example.com?validationToken=hello%20world",
+      "/webhooks/outlook/acme/room%40example.com?validationToken=hello%20world",
     { method: "POST" },
   );
   assert.equal(response.status, 200);
@@ -167,14 +167,14 @@ test("notification delivery failure returns 503 so the provider can retry", asyn
     async () => new Response(null, { status: 500 }),
   );
   const response = await fetch(
-    base + "/webhooks/microsoft/acme/room%40example.com",
+    base + "/webhooks/outlook/acme/room%40example.com",
     {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         value: [
           {
-            clientState: webhookToken(tenant, "MICROSOFT", "room@example.com"),
+            clientState: webhookToken(tenant, "OUTLOOK", "room@example.com"),
             subscriptionId: "sub",
             resource: "users/room@example.com/events/1",
             changeType: "updated",
@@ -189,4 +189,12 @@ test("health endpoint reveals no tenant credentials", async (t) => {
   const { base } = await fixture(t);
   const response = await fetch(base + "/health");
   assert.deepEqual(await response.json(), { status: "ok" });
+});
+
+test('OUTLOOK is the GraphQL provider name for Outlook calendar queries', async t => {
+  const { gql } = await fixture(t, url => String(url).includes('/token')
+    ? Response.json({ access_token: 'token' })
+    : Response.json({ value: [{ id: 'outlook-event', subject: 'Planning' }] }));
+  const result = await gql('{ events(provider: OUTLOOK, calendarId: "room@example.com") { items { id title } } }');
+  assert.deepEqual(result.body.data?.events.items, [{ id: 'outlook-event', title: 'Planning' }]);
 });

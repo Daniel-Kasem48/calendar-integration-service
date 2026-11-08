@@ -74,7 +74,7 @@ export class ProviderHttp {
         refresh_token: c.refreshToken,
       });
     } else {
-      const c = tenant.microsoft!;
+      const c = tenant.outlook!;
       url = `https://login.microsoftonline.com/${encodeURIComponent(c.tenantId)}/oauth2/v2.0/token`;
       body = new URLSearchParams({
         grant_type: "client_credentials",
@@ -112,7 +112,7 @@ export class ProviderHttp {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
-          ...(provider === "MICROSOFT"
+          ...(provider === "OUTLOOK"
             ? { Prefer: 'outlook.timezone="UTC"' }
             : {}),
         },

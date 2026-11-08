@@ -9,7 +9,7 @@ export interface GoogleConfig {
   refreshToken: string;
   calendars: string[];
 }
-export interface MicrosoftConfig {
+export interface OutlookConfig {
   tenantId: string;
   clientId: string;
   clientSecret: string;
@@ -21,7 +21,7 @@ export interface Tenant {
   webhookSecret: string;
   notificationUrl?: string;
   google?: GoogleConfig;
-  microsoft?: MicrosoftConfig;
+  outlook?: OutlookConfig;
 }
 export function fail(message: string, code = "BAD_USER_INPUT"): never {
   throw new GraphQLError(message, { extensions: { code } });
@@ -62,10 +62,10 @@ export class TenantRegistry {
         );
       if (typeof t.webhookSecret !== "string" || t.webhookSecret.length < 32)
         throw Error("Webhook secrets must be at least 32 characters");
-      if (!t.google && !t.microsoft)
+      if (!t.google && !t.outlook)
         throw Error("A calendar provider must be configured");
       if (t.notificationUrl) httpsUrl(t.notificationUrl);
-      for (const provider of [t.google, t.microsoft]) {
+      for (const provider of [t.google, t.outlook]) {
         if (!provider) continue;
         if (
           !Array.isArray(provider.calendars) ||
@@ -112,9 +112,9 @@ export class TenantRegistry {
   }
   calendar(id: string, provider: Provider, calendarId: string): Tenant {
     const tenant = this.get(id);
-    if (provider !== "GOOGLE" && provider !== "MICROSOFT")
+    if (provider !== "GOOGLE" && provider !== "OUTLOOK")
       fail("Unknown calendar provider");
-    const settings = provider === "GOOGLE" ? tenant.google : tenant.microsoft;
+    const settings = provider === "GOOGLE" ? tenant.google : tenant.outlook;
     if (!settings?.calendars.includes(calendarId))
       fail("Calendar is not allowed for this tenant", "FORBIDDEN");
     return tenant;

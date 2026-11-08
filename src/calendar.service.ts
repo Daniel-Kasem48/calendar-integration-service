@@ -3,23 +3,23 @@ import { createHmac } from "node:crypto";
 import { TenantRegistry, Tenant, fail, secretEquals } from "./config";
 import { EventInput, Fetch, ListOptions, Provider, Watch } from "./types";
 import { GoogleCalendar } from "./providers/google";
-import { MicrosoftCalendar } from "./providers/microsoft";
+import { OutlookCalendar } from "./providers/outlook";
 import { ProviderHttp } from "./providers/http";
 import { googleRecurrence } from "./recurrence";
 
 export class CalendarService {
   private readonly google: GoogleCalendar;
-  private readonly microsoft: MicrosoftCalendar;
+  private readonly outlook: OutlookCalendar;
   constructor(
     private readonly registry: TenantRegistry,
     http: Fetch = fetch,
   ) {
     const transport = new ProviderHttp(http);
     this.google = new GoogleCalendar(transport);
-    this.microsoft = new MicrosoftCalendar(transport);
+    this.outlook = new OutlookCalendar(transport);
   }
   private client(provider: Provider) {
-    return provider === "GOOGLE" ? this.google : this.microsoft;
+    return provider === "GOOGLE" ? this.google : this.outlook;
   }
   private validate(input: Partial<EventInput>): void {
     if (
@@ -183,8 +183,8 @@ export class CalendarService {
   async renew(tenant: string, provider: Provider, calendar: string, handle: string): Promise<Watch> {
     const t = this.registry.calendar(tenant, provider, calendar);
     const watch = this.readWatch(t, provider, calendar, handle);
-    if (provider !== "MICROSOFT") fail("Google channels cannot be renewed; create a new watch then stop the old watch");
-    const renewed = await this.microsoft.renew(t, watch.id);
+    if (provider !== "OUTLOOK") fail("Google channels cannot be renewed; create a new watch then stop the old watch");
+    const renewed = await this.outlook.renew(t, watch.id);
     return { ...renewed, id: this.watchHandle(t, provider, calendar, renewed) };
   }
   async unwatch(
@@ -200,7 +200,7 @@ export class CalendarService {
     if (provider === "GOOGLE") {
       if (!watch.resourceId) fail("Google resourceId is required");
       await this.google.unwatch(t, watch.id, watch.resourceId);
-    } else await this.microsoft.unwatch(t, watch.id);
+    } else await this.outlook.unwatch(t, watch.id);
     return true;
   }
 }

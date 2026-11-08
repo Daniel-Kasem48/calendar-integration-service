@@ -1,4 +1,4 @@
-// Extracted from Spantrek's GoogleRecurrencePatternAdapter and Office365RecurrencePatternAdapter.
+// Extracted from the original integration's GoogleRecurrencePatternAdapter and Office365RecurrencePatternAdapter.
 import moment from "moment-timezone";
 import { fail } from "./config";
 import { Recurrence } from "./types";
@@ -89,7 +89,7 @@ export function googleRecurrence(
     rule += `;UNTIL=${moment.tz(r.untilDate!, zone).endOf("day").utc().format("YYYYMMDD[T]HHmmss[Z]")}`;
   return rule;
 }
-export function microsoftRecurrence(
+export function outlookRecurrence(
   r: Recurrence,
   start: string,
   zone: string,

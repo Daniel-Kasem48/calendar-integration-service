@@ -1,4 +1,4 @@
-export type Provider = "GOOGLE" | "MICROSOFT";
+export type Provider = "GOOGLE" | "OUTLOOK";
 export interface Recurrence {
   recurrenceType:
     | "DAY"

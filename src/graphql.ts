@@ -24,7 +24,7 @@ import { EventInput, Provider, Recurrence } from "./types";
 
 enum CalendarProvider {
   GOOGLE = "GOOGLE",
-  MICROSOFT = "MICROSOFT",
+  OUTLOOK = "OUTLOOK",
 }
 enum RecurrenceType {
   DAY = "DAY",

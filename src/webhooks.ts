@@ -37,7 +37,7 @@ export class WebhookController {
     @Body() body: any,
     @Res() response: Response,
   ) {
-    if (!["google", "microsoft"].includes(name))
+    if (!["google", "outlook"].includes(name))
       throw new BadRequestException("Unknown provider");
     const provider = name.toUpperCase() as Provider;
     let tenant;
@@ -46,7 +46,7 @@ export class WebhookController {
     } catch {
       throw new UnauthorizedException();
     }
-    if (name === "microsoft" && typeof validationToken === "string")
+    if (name === "outlook" && typeof validationToken === "string")
       return response.status(200).type("text/plain").send(validationToken);
     const expected = webhookToken(tenant, provider, calendarId);
     let notification: Record<string, unknown>;

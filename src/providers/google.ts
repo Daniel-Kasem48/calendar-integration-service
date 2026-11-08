@@ -1,4 +1,4 @@
-// Provider payloads extracted from Spantrek's GoogleCalendarClient.
+// Provider payloads extracted from the original integration's GoogleCalendarClient.
 import { createHmac, randomUUID } from "node:crypto";
 import { Tenant } from "../config";
 import { googleRecurrence } from "../recurrence";
